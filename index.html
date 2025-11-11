@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PaceLock Monitor — Demo</title>
+  <style>
+    body{font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Arial; background:#f7fafc; color:#0f172a; padding:18px}
+    .card{background:white;border-radius:12px;padding:16px;box-shadow:0 6px 18px rgba(2,6,23,0.06);margin-bottom:14px}
+    header{display:flex;align-items:center;gap:12px}
+    .logo{width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#06b6d4,#7c3aed);display:flex;align-items:center;justify-content:center;color:white;font-weight:800}
+    h1{margin:0;font-size:20px}
+    p.small{margin:6px 0;color:#475569}
+    .grid{display:grid;grid-template-columns:1fr 320px;gap:12px;align-items:start}
+    .status{display:flex;gap:8px;flex-wrap:wrap}
+    .pill{padding:6px 10px;border-radius:999px;font-weight:600}
+    .pill.ok{background:#ecfeff;color:#064e3b}
+    .pill.warn{background:#fff7ed;color:#92400e}
+    .pill.bad{background:#fff1f2;color:#881337}
+    canvas{width:100%;height:140px;background:#021024;border-radius:8px;display:block}
+    .events{max-height:240px;overflow:auto}
+    .event{padding:8px;border-bottom:1px solid #eef2f7}
+    .muted{color:#64748b}
+    .controls{display:flex;gap:8px;align-items:center;margin-top:8px}
+    button{padding:8px 12px;border-radius:8px;border:0;background:#7c3aed;color:white;font-weight:700;cursor:pointer}
+    button.ghost{background:transparent;color:#0f172a;border:1px solid #e6edf3}
+    footer{font-size:13px;color:#475569;margin-top:8px}
+    .linkbox{background:#f1f5f9;padding:10px;border-radius:8px;margin-top:8px}
+    input.link{width:100%;padding:8px;border-radius:8px;border:1px solid #e6edf3}
+  </style>
+</head>
+<body>
+  <header class="card">
+    <div style="display:flex;align-items:center;gap:12px;width:100%">
+      <div class="logo">PL</div>
+      <div style="flex:1">
+        <h1>PaceLock — Live Monitor (Demo)</h1>
+        <p class="small">This is a demo webpage that shows sample heartbeat data and events after scanning the QR code on your PaceLock box.</p>
+      </div>
+      <div style="text-align:right">
+        <div class="pill ok">Device: Connected</div>
+        <div style="height:6px"></div>
+        <div class="muted">Battery: 84% • App: Connected</div>
+      </div>
+    </div>
+  </header>
+
+  <div class="grid">
+    <div>
+      <div class="card">
+        <h3>Live Heartbeat</h3>
+        <p class="small">Simulated ECG trace from PaceLock's sensing unit. Green = normal, red sections mark detected irregularity.</p>
+        <canvas id="ecg"></canvas>
+        <div class="controls">
+          <button id="btn-sim">Simulate Arrhythmia</button>
+          <button class="ghost" id="btn-reset">Reset</button>
+          <button class="ghost" id="btn-export">Download CSV</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Recent Actions</h3>
+        <p class="small">What PaceLock did recently (auto-generated demo events).</p>
+        <div class="events" id="events"></div>
+      </div>
+
+    </div>
+
+    <aside>
+      <div class="card">
+        <h3>Device Summary</h3>
+        <p class="muted">Model: PaceLock Prototype • Electrodes: 6 • Sensing: electromagnetic • AI module: Demo v1</p>
+        <div style="height:10px"></div>
+        <div class="status">
+          <div class="pill ok">Monitoring</div>
+          <div class="pill warn">Battery OK</div>
+          <div class="pill ok">App Synced</div>
+        </div>
+
+        <div style="height:10px"></div>
+        <div class="linkbox">
+          <div style="font-weight:700;margin-bottom:6px">Shareable link (scan QR)</div>
+          <input class="link" id="shareLink" readonly value="http://YOUR_COMPUTER_IP:8000/pace_lock_monitor.html" />
+          <p class="small muted">To make this link work on another phone: host this file on your computer using <code>python -m http.server 8000</code> then replace <code>YOUR_COMPUTER_IP</code> with your computer's IP address. Scan a QR that points to that URL.</p>
+        </div>
+
+        <div style="height:10px"></div>
+        <div style="font-weight:700">Tips (8th grade friendly)</div>
+        <ul class="small muted">
+          <li>Host the file on your laptop and connect your phone to the same Wi-Fi.</li>
+          <li>Scan the QR code that links to the shareable URL to open this page on your phone.</li>
+          <li>This is only a demo — real device data will come from the PaceLock hardware and app.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3>Assessment Ready</h3>
+        <p class="small">This demo page helps with the presentation criteria:</p>
+        <ul class="small muted">
+          <li><strong>Content:</strong> Shows how monitoring/events look.</li>
+          <li><strong>Creativity:</strong> Interactive demo with simulated ECG.</li>
+          <li><strong>Presentation Aids:</strong> Use phone to show live page during demo.</li>
+          <li><strong>Teamwork:</strong> One student scans QR, another explains events.</li>
+        </ul>
+      </div>
+
+    </aside>
+  </div>
+
+  <footer class="muted">Demo created for PaceLock school project • Save this file as <code>pace_lock_monitor.html</code>.</footer>
+
+<script>
+  // Small simulated ECG generator with events
+  const canvas = document.getElementById('ecg');
+  canvas.width = canvas.clientWidth * devicePixelRatio;
+  canvas.height = canvas.clientHeight * devicePixelRatio;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+
+  let buffer = new Array(600).fill(0);
+  let events = [];
+
+  function draw() {
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
+    ctx.clearRect(0,0,w,h);
+
+    // background grid
+    ctx.fillStyle = '#001226';
+    ctx.fillRect(0,0,w,h);
+
+    // baseline
+    ctx.strokeStyle = '#083344';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0,h/2);
+    ctx.lineTo(w,h/2);
+    ctx.stroke();
+
+    // draw ECG
+    ctx.beginPath();
+    for (let i=0;i<buffer.length;i++){
+      const x = (i/buffer.length)*w;
+      const y = h/2 - buffer[i]*0.8;
+      if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    // color: if last event was arrhythmia, red else green
+    const recentBad = events.length && (Date.now() - events[0].ts < 9000);
+    ctx.strokeStyle = recentBad ? '#ff6b6b' : '#3ee7b6';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // small overlay text
+    ctx.fillStyle = '#aab7c6';
+    ctx.font = '12px system-ui';
+    ctx.fillText('PaceLock Demo ECG', 10, 16);
+  }
+
+  function step() {
+    // shift buffer and add new value
+    buffer.shift();
+    // normal beat baseline noise
+    let val = Math.sin(Date.now()/120) * 6 + (Math.random()-0.5)*1.2;
+    // create heartbeat spike every ~60 frames
+    if (Math.random() < 0.06) val += 35 + Math.random()*20; // simulated QRS
+
+    buffer.push(val);
+    draw();
+    requestAnimationFrame(step);
+  }
+
+  // Events list UI
+  const eventsEl = document.getElementById('events');
+  function addEvent(type, detail){
+    const ev = {type, detail, ts: Date.now()};
+    events.unshift(ev);
+    if (events.length>20) events.pop();
+    renderEvents();
+  }
+  function renderEvents(){
+    eventsEl.innerHTML = '';
+    events.forEach(e=>{
+      const d = new Date(e.ts);
+      const div = document.createElement('div');
+      div.className = 'event';
+      div.innerHTML = `<strong>${e.type}</strong> <div class='muted'>${d.toLocaleString()}</div><div style='margin-top:6px'>${e.detail}</div>`;
+      eventsEl.appendChild(div);
+    });
+  }
+
+  document.getElementById('btn-sim').addEventListener('click',()=>{
+    // simulate arrhythmia event: insert a chunk of weird values
+    for (let i=0;i<80;i++){ buffer[buffer.length-1-i] = (Math.random()*25 - 5) + (i%8===0 ? 70 : 0); }
+    addEvent('Arrhythmia detected', 'PaceLock delivered a corrective impulse to restore rhythm.');
+  });
+
+  document.getElementById('btn-reset').addEventListener('click',()=>{
+    buffer = new Array(600).fill(0);
+    addEvent('Monitor reset', 'Device monitoring restarted (demo).');
+  });
+
+  document.getElementById('btn-export').addEventListener('click',()=>{
+    // export buffer as CSV
+    const rows = buffer.map((v,i)=>`${i},${v}`).join('\n');
+    const blob = new Blob(["index,value\n"+rows],{type:'text/csv'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href=url; a.download='pace_lock_ecg.csv'; a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  // initial demo events
+  addEvent('Monitoring started', 'PaceLock activated and linked to app (demo data).');
+  addEvent('Normal heartbeat', 'No corrective action needed.');
+
+  requestAnimationFrame(step);
+</script>
+</body>
+</html>
